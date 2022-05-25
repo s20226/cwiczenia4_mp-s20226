@@ -107,12 +107,12 @@ namespace Cw5.Services
                     double price = 0;
                     command.CommandText = "SELECT price FROM Product WHERE IdProduct = @IdOrder";
                     command.Parameters.AddWithValue("@IdOrder", idOrder);
-                    using(var dr = await command.ExecuteReaderAsync())
+                    using (var dr = await command.ExecuteReaderAsync())
                     {
 
                         while (await dr.ReadAsync())
                         {
-                            price =double.Parse(dr["price"].ToString());
+                            price = double.Parse(dr["price"].ToString());
                         }
                     }
                     command.Parameters.Clear();
@@ -122,7 +122,7 @@ namespace Cw5.Services
                     command.Parameters.AddWithValue("@IdProduct", registerProduct.IdProduct);
                     command.Parameters.AddWithValue("@IdOrder", idOrder);
                     command.Parameters.AddWithValue("@Amount", registerProduct.Amount);
-         
+
                     command.Parameters.AddWithValue("@price", price * registerProduct.Amount);
 
 
@@ -150,5 +150,25 @@ namespace Cw5.Services
 
 
         }
+
+        public async Task<int> AddProductToWarehouse(RegisterProduct registerProduct)
+        {
+            using (var con = new SqlConnection(_configuration.GetConnectionString("DefaultDbConnection")))
+            {
+                await con.OpenAsync();
+                SqlCommand command = con.CreateCommand();
+                command.Connection = con;
+                command.CommandText = "AddProductToWarehouse";
+                command.CommandType = System.Data.CommandType.StoredProcedure;
+                command.Parameters.AddWithValue("@IdProduct", registerProduct.IdProduct);
+                command.Parameters.AddWithValue("@IdWarehouse", registerProduct.IdWareHouse);
+                command.Parameters.AddWithValue("@Amount", registerProduct.Amount);
+                command.Parameters.AddWithValue("@CreatedAt", registerProduct.CreatedAt);
+
+                var primaryKey = int.Parse((await command.ExecuteScalarAsync()).ToString());
+                return primaryKey;
+            }
+        }
     }
 }
+

@@ -12,6 +12,7 @@ namespace Cw5.Services
         public void PutOrder(int idOrder, RegisterProduct register);
         public Task<int> AddProductToWarehouse(RegisterProduct registerProduct, int idOrder);
         public Task<bool> CheckProductWarehouse(int id);
+        public Task<int> AddProductToWarehouse(RegisterProduct registerProduct);
 
     }
 
