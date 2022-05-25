@@ -4,10 +4,11 @@
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
     "iisExpress": {
-      "applicationUrl": "http://localhost:59934",
+      "applicationUrl": "http://localhost:4915",
       "sslPort": 0
     }
   },
+  "profiles": {
     "Cw5": {
       "commandName": "Project",
       "dotnetRunMessages": "true",

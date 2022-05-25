@@ -40,15 +40,12 @@ namespace Cw5.Services
             }
         }
 
-        public async Task<bool> CheckData(int id, string tableName, string attributName)
+        public async Task<bool> CheckProductWarehouse(int idOrder)
         {
             using (var con = new SqlConnection(_configuration.GetConnectionString("DefaultDbConnection")))
             {
-                var com = new SqlCommand("SELECT 1 FROM @tableName WHERE @attributName = @id", con);
-                com.Parameters.AddWithValue("@id", id);
-                com.Parameters.AddWithValue("@tableName", tableName);
-                com.Parameters.AddWithValue("@attributName", attributName);
-
+                var com = new SqlCommand("SELECT 1 FROM Product_Warehouse WHERE idorder = @idOrder", con);
+                com.Parameters.AddWithValue("@idOrder", idOrder);
                 await con.OpenAsync();
                 var result = await com.ExecuteReaderAsync();
                 return result.HasRows;
@@ -60,15 +57,22 @@ namespace Cw5.Services
         {
             using (var con = new SqlConnection(_configuration.GetConnectionString("DefaultDbConnection")))
             {
-                var com = new SqlCommand("SELECT IdOrder FROM Order WHERE idProduct = @idProduct " +
+                var com = new SqlCommand("SELECT idorder FROM [Order] WHERE idProduct = @idProduct " +
                     "AND Amount = @amount AND CreatedAt < @regCreatedAt", con);
                 com.Parameters.AddWithValue("@idProduct", registerProduct.IdProduct);
                 com.Parameters.AddWithValue("@amount", registerProduct.Amount);
-                com.Parameters.AddWithValue("@regCreatedAt", registerProduct.CreatedAt);
+                com.Parameters.AddWithValue("@regCreatedAt", registerProduct.CreatedAt.ToString("yyyy-M-d"));
                 await con.OpenAsync();
-                var result = await com.ExecuteReaderAsync();
 
-                return int.Parse(result["idOrder"].ToString()); ;
+                using (var result = await com.ExecuteReaderAsync())
+                {
+
+                    while (await result.ReadAsync())
+                    {
+                        return int.Parse(result["idOrder"].ToString());
+                    }
+                }
+                return 0;
             }
         }
 
@@ -77,8 +81,8 @@ namespace Cw5.Services
             using (var con = new SqlConnection(_configuration.GetConnectionString("DefaultDbConnection")))
             {
                 var com = new SqlCommand(
-                    $"UPDATE Order " +
-                    $"SET FullfilledAt = @regCreatedAt " +
+                    $"UPDATE [Order] " +
+                    $"SET FulfilledAt = @regCreatedAt " +
                     $"where idOrder=@idOrder", con);
                 com.Parameters.AddWithValue("@regCreatedAt", register.CreatedAt);
                 com.Parameters.AddWithValue("@idOrder", idOrder);
@@ -95,26 +99,35 @@ namespace Cw5.Services
             {
                 await con.OpenAsync();
                 var transaction = await con.BeginTransactionAsync();
-                SqlCommand com = con.CreateCommand();
-                com.Connection = con;
-                com.Transaction = transaction as SqlTransaction;
+                SqlCommand command = con.CreateCommand();
+                command.Connection = con;
+                command.Transaction = transaction as SqlTransaction;
                 try
                 {
-                    com = new SqlCommand(
-                       $"INSERT INTO Product_Warehouse (IdWarehouse,IdProduct, IdOrder, Amount, Price, CreatedAt) " +
-                       $"output INSERTED.idproductwarehouse " +
-                       $"VALUES(@IdWarehouse, @IdProduct, @IdOrder, @Amount, @Amount * (select price from product where idProduct=@IdProduct), @CreatedAt);"
-                       , con);
-                    com.Parameters.AddWithValue("@IdWarehouse", registerProduct.IdWareHouse);
-                    com.Parameters.AddWithValue("@IdProduct", registerProduct.IdProduct);
-                    com.Parameters.AddWithValue("@IdOrder", idOrder);
-                    com.Parameters.AddWithValue("@Amount", registerProduct.Amount);
-                    com.Parameters.AddWithValue("@CreatedAt", DateTime.Now);
-                    await con.OpenAsync();
+                    double price = 0;
+                    command.CommandText = "SELECT price FROM Product WHERE IdProduct = @IdOrder";
+                    command.Parameters.AddWithValue("@IdOrder", idOrder);
+                    using(var dr = await command.ExecuteReaderAsync())
+                    {
 
-                    var primaryKey = int.Parse((await com.ExecuteScalarAsync()).ToString());
+                        while (await dr.ReadAsync())
+                        {
+                            price =double.Parse(dr["price"].ToString());
+                        }
+                    }
+                    command.Parameters.Clear();
+
+                    command.CommandText = "INSERT INTO Product_Warehouse (idwarehouse, idproduct, idorder, amount, price, createdat) output INSERTED.idproductwarehouse VALUES (@IdWarehouse, @IdProduct, @IdOrder, @Amount, @price, GETDATE())";
+                    command.Parameters.AddWithValue("@IdWarehouse", registerProduct.IdWareHouse);
+                    command.Parameters.AddWithValue("@IdProduct", registerProduct.IdProduct);
+                    command.Parameters.AddWithValue("@IdOrder", idOrder);
+                    command.Parameters.AddWithValue("@Amount", registerProduct.Amount);
+         
+                    command.Parameters.AddWithValue("@price", price * registerProduct.Amount);
+
+
+                    var primaryKey = int.Parse((await command.ExecuteScalarAsync()).ToString());
                     await transaction.CommitAsync();
-
                     return primaryKey;
                 }
                 catch (Exception ex)
@@ -134,6 +147,7 @@ namespace Cw5.Services
                 }
 
             }
+
 
         }
     }

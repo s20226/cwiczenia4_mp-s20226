@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Cw5.Controllers
 {
-    [Route("api/[controller]")]
+    //[Route("api/[controller]")]
     [Route("api/warehouses")]
     [ApiController]
     public class WarehousesController : ControllerBase
@@ -30,9 +30,9 @@ namespace Cw5.Controllers
 
             if (!isIdProduct)
             {
-                return NotFound($"{register.IdProduct} not found");
+                return NotFound($"Product id:{register.IdProduct} not found");
             }
-            if (!isIdWarehouse) { return NotFound($"{register.IdWareHouse} not found"); }
+            if (!isIdWarehouse) { return NotFound($"Warehouse id:{register.IdWareHouse} not found"); }
             //2
             int idOrder = await _dbService.GetOrderId(register);
             //2a
@@ -41,9 +41,9 @@ namespace Cw5.Controllers
                 return NotFound("Invalid parameter: There is no order to fullfill");
             }
             //3a
-            if (await _dbService.CheckData(idOrder, "Product_Warehouse", "idOrder"))
+            if (await _dbService.CheckProductWarehouse(idOrder))
             {
-                return BadRequest($"{idOrder} is already fullfil");
+                return BadRequest($"Order: {idOrder} is already fullfil");
             }
             _dbService.PutOrder(idOrder, register);
 
@@ -56,8 +56,3 @@ namespace Cw5.Controllers
         }
     }
 }
-/* 
- Produkt możemy dodać do hurtowni tylko jeśli w tabeli Order istnieje zlecenie zakupu produktu. 
-Sprawdzamy zatem czy w tabeli Order istnieje rekord z: IdProduct i Amount zgodnym z naszym żądaniem. 
-CreatedAt zamówienia powinno być mniejsze niż CreatedAt pochodzące z naszego żądania (zamówienie/order powinno pojawić się w bazie danych wcześniej niż nasze żądanie).
- */
